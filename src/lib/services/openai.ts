@@ -1,13 +1,6 @@
 import OpenAI from "openai";
-
-let openaiClient: OpenAI | null = null;
-
-function getClient(): OpenAI {
-  if (!openaiClient) {
-    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return openaiClient;
-}
+import { db } from "@/lib/db";
+import { decrypt } from "@/lib/crypto";
 
 export interface GeneratedArticle {
   title: string;
@@ -24,15 +17,48 @@ export interface GeneratedArticle {
   wordCount: number;
 }
 
-export async function generateArticle(
-  keyword: string,
-  topic: string
-): Promise<GeneratedArticle> {
-  const client = getClient();
+// Resolve which AI provider + key to use for a given user
+async function resolveAIConfig(userId: string): Promise<{
+  provider: "openai" | "claude";
+  apiKey: string;
+}> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { openaiApiKey: true, claudeApiKey: true, aiProvider: true },
+  });
 
-  const systemPrompt = `You are an expert SEO content writer and strategist. You write high-quality, engaging, SEO-optimized blog articles. Always output valid JSON.`;
+  if (!user) throw new Error("User not found");
 
-  const userPrompt = `Write a comprehensive SEO-optimized blog article.
+  const provider = (user.aiProvider || "openai") as "openai" | "claude";
+
+  if (provider === "claude" && user.claudeApiKey) {
+    return { provider: "claude", apiKey: decrypt(user.claudeApiKey) };
+  }
+
+  if (provider === "openai" && user.openaiApiKey) {
+    return { provider: "openai", apiKey: decrypt(user.openaiApiKey) };
+  }
+
+  // Fallback: try whichever key exists
+  if (user.openaiApiKey) {
+    return { provider: "openai", apiKey: decrypt(user.openaiApiKey) };
+  }
+  if (user.claudeApiKey) {
+    return { provider: "claude", apiKey: decrypt(user.claudeApiKey) };
+  }
+
+  // Last resort: env variable
+  if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== "sk-placeholder-set-your-real-key") {
+    return { provider: "openai", apiKey: process.env.OPENAI_API_KEY };
+  }
+
+  throw new Error("No AI API key configured. Go to Settings to add your OpenAI or Claude API key.");
+}
+
+const ARTICLE_SYSTEM_PROMPT = `You are an expert SEO content writer and strategist. You write high-quality, engaging, SEO-optimized blog articles. Always output valid JSON.`;
+
+function buildArticlePrompt(keyword: string, topic: string): string {
+  return `Write a comprehensive SEO-optimized blog article.
 
 Topic: ${topic}
 Primary Keyword: ${keyword}
@@ -70,12 +96,17 @@ Return a JSON object with these fields:
     {"prompt": "image prompt 2", "alt": "alt text 2", "placement": "after section 4"}
   ]
 }`;
+}
+
+// ─── OpenAI-based generation ───────────────────────
+async function generateViaOpenAI(apiKey: string, keyword: string, topic: string): Promise<string> {
+  const client = new OpenAI({ apiKey });
 
   const response = await client.chat.completions.create({
     model: "gpt-4o",
     messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+      { role: "system", content: ARTICLE_SYSTEM_PROMPT },
+      { role: "user", content: buildArticlePrompt(keyword, topic) },
     ],
     response_format: { type: "json_object" },
     temperature: 0.7,
@@ -84,6 +115,63 @@ Return a JSON object with these fields:
 
   const raw = response.choices[0]?.message?.content;
   if (!raw) throw new Error("No response from OpenAI");
+  return raw;
+}
+
+// ─── Claude-based generation ───────────────────────
+async function generateViaClaude(apiKey: string, keyword: string, topic: string): Promise<string> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 4096,
+      system: ARTICLE_SYSTEM_PROMPT + "\nYou MUST respond with ONLY valid JSON, no markdown fences.",
+      messages: [
+        { role: "user", content: buildArticlePrompt(keyword, topic) },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Claude API error ${res.status}: ${errText}`);
+  }
+
+  const data = await res.json();
+  const raw = data.content?.[0]?.text;
+  if (!raw) throw new Error("No response from Claude");
+
+  // Strip potential markdown fences
+  return raw.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+}
+
+// ─── Main article generator (routes through user's chosen provider) ───
+export async function generateArticle(
+  keyword: string,
+  topic: string,
+  userId?: string
+): Promise<GeneratedArticle> {
+  let raw: string;
+
+  if (userId) {
+    const config = await resolveAIConfig(userId);
+
+    if (config.provider === "claude") {
+      raw = await generateViaClaude(config.apiKey, keyword, topic);
+    } else {
+      raw = await generateViaOpenAI(config.apiKey, keyword, topic);
+    }
+  } else {
+    // Fallback for cases without userId
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error("No API key configured");
+    raw = await generateViaOpenAI(apiKey, keyword, topic);
+  }
 
   const parsed = JSON.parse(raw);
 
@@ -131,34 +219,66 @@ Return a JSON object with these fields:
   };
 }
 
-export async function generateImageDescription(topic: string): Promise<{
-  prompt: string;
-  altText: string;
-}> {
-  const client = getClient();
-
-  const response = await client.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: "Generate blog image descriptions. Return valid JSON.",
-      },
-      {
-        role: "user",
-        content: `Generate a realistic blog featured image description.
+export async function generateImageDescription(
+  topic: string,
+  userId?: string
+): Promise<{ prompt: string; altText: string }> {
+  const prompt = `Generate a realistic blog featured image description.
 Topic: ${topic}
 Style: Professional, High CTR, Blog thumbnail friendly, No text overlay.
 Also generate SEO-optimized ALT text.
-Return JSON: {"prompt": "detailed image prompt", "altText": "SEO alt text"}`,
-      },
-    ],
-    response_format: { type: "json_object" },
-    temperature: 0.7,
-    max_tokens: 500,
-  });
+Return JSON: {"prompt": "detailed image prompt", "altText": "SEO alt text"}`;
 
-  const raw = response.choices[0]?.message?.content;
-  if (!raw) throw new Error("No response from OpenAI");
+  let raw: string;
+
+  if (userId) {
+    const config = await resolveAIConfig(userId);
+    if (config.provider === "claude") {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": config.apiKey,
+          "anthropic-version": "2023-06-01",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-5-20250929",
+          max_tokens: 500,
+          system: "Generate blog image descriptions. Return ONLY valid JSON, no markdown.",
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      const data = await res.json();
+      raw = data.content?.[0]?.text || "{}";
+      raw = raw.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
+    } else {
+      const client = new OpenAI({ apiKey: config.apiKey });
+      const response = await client.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "Generate blog image descriptions. Return valid JSON." },
+          { role: "user", content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 500,
+      });
+      raw = response.choices[0]?.message?.content || "{}";
+    }
+  } else {
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "Generate blog image descriptions. Return valid JSON." },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+      max_tokens: 500,
+    });
+    raw = response.choices[0]?.message?.content || "{}";
+  }
+
   return JSON.parse(raw);
 }

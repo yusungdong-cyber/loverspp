@@ -28,8 +28,8 @@ export async function createArticleFromTopic(
   });
 
   try {
-    // Generate article via OpenAI
-    const generated = await generateArticle(topic.keyword, topic.title);
+    // Generate article via user's AI provider
+    const generated = await generateArticle(topic.keyword, topic.title, userId);
 
     // Calculate SEO score
     const seoScore = calculateSeoScore(
