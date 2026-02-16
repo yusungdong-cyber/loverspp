@@ -75,6 +75,23 @@ As the project grows, update this file with:
 - 소스 간 정보가 충돌하면 **공식 문서(Context7) > 최신 웹 결과 > 기타** 순으로 우선한다
 - 검증 결과를 코드 작성 전에 사용자에게 간략히 요약 보고한다
 
+### Context7 MCP 설치 (필수)
+
+Context7이 아직 설치되지 않았다면 `.claude/settings.json`(또는 `~/.claude/settings.json`)에 추가:
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    }
+  }
+}
+```
+
+설치 확인: Claude Code 실행 후 `/mcp` 명령으로 context7 서버가 연결되었는지 확인한다.
+
 ### 위반 시
 
 - 리서치 없이 작성한 코드는 신뢰할 수 없으므로, 사용자가 리서치 증거를 요구할 수 있다
