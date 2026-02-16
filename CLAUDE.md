@@ -1,159 +1,202 @@
 # CLAUDE.md
 
-이 파일은 **VibeExchange (바이브코딩 거래소)** 저장소에서 작업하는 AI 어시스턴트를 위한 가이드입니다.
+Guide for AI assistants working on the **WP AutoProfit AI** repository.
 
 ---
 
-## 프로젝트 개요
+## Project Overview
 
-**VibeExchange**는 바이브코딩 프로젝트의 제작 의뢰와 SaaS 거래를 위한 MVP 웹 플랫폼입니다.
+**WP AutoProfit AI** is a SaaS platform that helps users automatically monetize WordPress blogs by:
+1. Detecting trending topics (mock Google Trends)
+2. Generating SEO-optimized articles via OpenAI
+3. Automatically handling image prompts and ALT text
+4. Publishing to WordPress via REST API
+5. Scoring content for Google SEO best practices
 
-> "바이브코딩으로 만들고, 사고, 의뢰하세요"
+---
 
-두 가지 핵심 플로우:
-- **Flow A (제작 요청):** 바이어가 웹사이트 제작을 요청하고 크리에이터가 제안서를 보내는 게시판
-- **Flow B (SaaS 거래소):** 바이브코딩으로 만든 SaaS/프로젝트를 사고파는 마켓플레이스 (수수료 5%)
+## Tech Stack
 
-## 기술 스택
+| Category | Technology | Version |
+|----------|-----------|---------|
+| Framework | Next.js (App Router) | 14.2.18 |
+| UI | React + Tailwind CSS v3 + shadcn/ui | ^18.3.1 |
+| Language | TypeScript (strict mode) | ^5 |
+| Database | PostgreSQL via Prisma ORM | ^5.22.0 |
+| Auth | JWT (jose) + bcryptjs | — |
+| AI | OpenAI API (gpt-4o) | ^4.73.0 |
+| Charts | Recharts | ^2.13.3 |
+| Linter | ESLint v8 (next/core-web-vitals) | ^8 |
+| Deploy | Vercel (frontend) + Railway (PostgreSQL) | — |
 
-| 분류 | 기술 | 버전 |
-|------|------|------|
-| 프레임워크 | Next.js (App Router) | 14.2.18 |
-| UI 라이브러리 | React | ^18.3.1 |
-| 스타일링 | Tailwind CSS v3 + shadcn/ui | ^3.4.17 |
-| 언어 | TypeScript (strict 모드) | ^5 |
-| 인증/DB | Supabase (Auth + Postgres) | ^2.47.10 |
-| 린터 | ESLint v8 (next/core-web-vitals) | ^8 |
-| 결제 | Stripe Connect (선택, 피처플래그) | — |
-| 배포 | Vercel | — |
+---
 
-## 프로젝트 구조
+## Project Structure
 
 ```
+prisma/
+├── schema.prisma          # Database schema (User, WpSite, TrendSession, TrendTopic, Article)
+└── seed.ts                # Demo user + sample trend data
+
 src/
 ├── app/
-│   ├── page.tsx                    # 홈 (두 가지 플로우 카드 + 최신 항목)
-│   ├── layout.tsx                  # 루트 레이아웃 (Header + Footer)
-│   ├── globals.css                 # Tailwind + shadcn 테마 CSS 변수
-│   ├── (auth)/                     # 인증 (로그인, 회원가입, 콜백)
-│   ├── requests/                   # Flow A: 제작 요청 게시판
-│   │   ├── page.tsx                # 요청 목록 (검색 + 필터)
-│   │   ├── new/page.tsx            # 새 요청 작성 폼
-│   │   └── [id]/
-│   │       ├── page.tsx            # 요청 상세 + 제안서 목록
-│   │       └── propose/page.tsx    # 제안서 작성 폼
-│   ├── market/                     # Flow B: SaaS 거래소
-│   │   ├── page.tsx                # 리스팅 목록 (검색 + 필터)
-│   │   └── [id]/page.tsx           # 리스팅 상세 + 거래 시작
-│   ├── sell/new/page.tsx           # 판매 등록 폼
-│   ├── inbox/                      # 메시징 (스레드 목록 + 대화)
-│   ├── deals/[dealId]/page.tsx     # 거래 상세 (단계별 진행 상황)
-│   ├── dashboard/                  # 내 요청 / 내 제안 관리
-│   ├── terms/page.tsx              # 이용약관
-│   ├── disclaimer/page.tsx         # 면책조항
-│   └── safety-checklist/page.tsx   # 안전 거래 체크리스트
+│   ├── page.tsx           # Landing page (hero + features + CTA)
+│   ├── layout.tsx         # Root layout (dark mode, Inter font)
+│   ├── globals.css        # Tailwind + CSS variables (light/dark)
+│   ├── login/page.tsx     # Login form
+│   ├── register/page.tsx  # Registration form
+│   ├── dashboard/
+│   │   ├── layout.tsx     # Dashboard shell (nav + container)
+│   │   ├── page.tsx       # Overview: stats cards, quick actions, recent articles
+│   │   ├── trends/page.tsx      # Trend discovery: category filter, chart, generate article
+│   │   ├── articles/page.tsx    # Article list: filter by status, SEO badges
+│   │   ├── articles/[id]/page.tsx  # Article detail: content, SEO scores, publish actions
+│   │   └── sites/page.tsx       # WordPress site management: add/verify/delete
+│   └── api/
+│       ├── auth/
+│       │   ├── register/route.ts  # POST: create user + set JWT cookie
+│       │   ├── login/route.ts     # POST: verify password + set JWT cookie
+│       │   ├── logout/route.ts    # POST: clear cookie
+│       │   └── me/route.ts        # GET: current user
+│       ├── trends/
+│       │   ├── route.ts           # GET: latest trends | POST: generate new
+│       │   └── history/route.ts   # GET: trend session history
+│       ├── articles/
+│       │   ├── route.ts           # GET: list | POST: generate from topic
+│       │   └── [id]/
+│       │       ├── route.ts       # GET: detail | DELETE: remove
+│       │       └── publish/route.ts  # POST: publish to WordPress
+│       ├── sites/
+│       │   ├── route.ts           # GET: list | POST: add + validate
+│       │   └── [id]/route.ts      # DELETE: remove site
+│       └── dashboard/route.ts     # GET: stats overview
 ├── components/
-│   ├── ui/                         # shadcn/ui (Button, Card, Input, Badge 등)
-│   ├── layout/                     # Header (반응형 네비), Footer (면책조항)
-│   └── shared/                     # DisclaimerCheckbox
+│   ├── ui/                # shadcn/ui: Button, Card, Input, Label, Badge, Progress,
+│   │                      #   Separator, Tabs, Select, Dialog
+│   ├── layout/
+│   │   └── dashboard-nav.tsx  # Responsive nav with mobile menu
+│   └── shared/
+│       ├── seo-score-badge.tsx   # Color-coded score circle
+│       ├── article-preview.tsx   # Dialog with full article + SEO scores
+│       └── trend-chart.tsx       # Recharts bar chart for trend scores
 ├── lib/
-│   ├── supabase/                   # client.ts, server.ts, middleware.ts
-│   ├── types/database.ts           # 모든 엔티티 TypeScript 인터페이스
-│   ├── constants.ts                # 사이트 설정, 상수, 열거형 (카테고리, 상태 등)
-│   └── utils.ts                    # cn(), formatPrice(), formatDate()
-└── middleware.ts                   # Supabase 세션 갱신
-
-supabase/migrations/
-└── 001_initial.sql                 # 10개 테이블 + 22개 RLS + 16개 인덱스
-
-scripts/
-└── seed.ts                         # 테스트 데이터 시드 스크립트
+│   ├── db.ts              # Prisma client singleton
+│   ├── auth.ts            # JWT sign/verify, cookie management, requireAuth()
+│   ├── crypto.ts          # AES-256-GCM encrypt/decrypt for WP credentials
+│   ├── rate-limit.ts      # In-memory rate limiter
+│   ├── utils.ts           # cn(), formatDate(), formatNumber(), slugify(), getScoreColor()
+│   ├── constants.ts       # APP_NAME, categories, statuses, SEO thresholds, nav items
+│   └── services/
+│       ├── trends.ts      # Mock trend generation, scoring algorithm, DB persistence
+│       ├── openai.ts      # Article generation via GPT-4o, image prompt generation
+│       ├── seo-scorer.ts  # Keyword density, readability, heading structure, overall score
+│       ├── wordpress.ts   # WP REST API: validate, publish, media upload, categories/tags
+│       └── articles.ts    # Article CRUD, generate-from-topic, publish orchestration
+└── middleware.ts          # Auth redirect for /dashboard/*, API protection
 ```
 
-## 빌드 & 실행 명령어
+---
+
+## Commands
 
 ```bash
-npm install          # 의존성 설치
-npm run dev          # 개발 서버 (http://localhost:3000)
-npm run build        # 프로덕션 빌드
-npm start            # 프로덕션 서버 시작
-npm run lint         # ESLint 실행
-npm run seed         # 시드 데이터 (Supabase 연결 필요)
+npm install              # Install dependencies
+npm run dev              # Dev server (http://localhost:3000)
+npm run build            # Production build (includes prisma generate)
+npm start                # Start production server
+npm run lint             # ESLint
+npm run db:generate      # Generate Prisma client
+npm run db:push          # Push schema to database
+npm run db:migrate       # Create migration
+npm run db:seed          # Seed demo data
+npm run db:studio        # Open Prisma Studio
 ```
 
-## 핵심 아키텍처 패턴
+---
 
-### 데이터베이스
+## Architecture Patterns
 
-- Supabase Postgres + Row Level Security (RLS)
-- 모든 테이블에 소유자/참여자 기반 접근 제어 적용
-- `profiles` 테이블: `auth.users` INSERT 트리거로 자동 생성
-- `updated_at` 자동 갱신 트리거 (requests, listings, deals)
+### Database
+- **Prisma ORM** with PostgreSQL
+- 5 models: `User`, `WpSite`, `TrendSession`, `TrendTopic`, `Article`
+- `ArticleStatus` enum: DRAFT → GENERATING → READY → PUBLISHING → PUBLISHED | FAILED
+- Cascading deletes from User to owned records
+- Composite unique constraint on `WpSite(userId, siteUrl)`
 
-### 인증
+### Authentication
+- JWT-based via `jose` library (HS256, 7-day expiry)
+- HttpOnly cookie (`wp-autoprofit-token`)
+- Middleware-level protection for `/dashboard/*` routes
+- `requireAuth()` helper for API routes
+- Rate limiting on auth endpoints
 
-- Supabase Auth (이메일/비밀번호)
-- `@supabase/ssr`로 Next.js 14 App Router 통합
-- 미들웨어에서 매 요청마다 세션 갱신
-- 서버 컴포넌트: `lib/supabase/server.ts`의 `createClient()`
-- 클라이언트 컴포넌트: `lib/supabase/client.ts`의 `createClient()`
+### Credential Security
+- WordPress Application Passwords encrypted with **AES-256-GCM**
+- Key derived via `scrypt` from `ENCRYPTION_KEY` env var
+- IV + AuthTag stored alongside ciphertext
 
-### 상수 관리
+### SEO Scoring
+Calculated via `src/lib/services/seo-scorer.ts`:
+- Keyword density (target 1.0-1.5%)
+- Readability (sentence length analysis)
+- Heading structure (H1/H2/H3 count)
+- Meta description quality
+- Content length (target 1200-1800 words)
+- Weighted overall score (0-100)
 
-- `src/lib/constants.ts`에 모든 설정값 집중
-  - 카테고리, 상태, 결제 방식 등 열거형
-  - 면책조항 텍스트 (`DISCLAIMER_TEXT`)
-  - 플랫폼 수수료율 (`PLATFORM_FEE_RATE = 0.05`)
+### Trend Scoring
+Composite score formula:
+```
+score = searchVolume_normalized * 0.35 + competition_inverse * 0.25 + monetization * 0.40
+```
 
-### 경로 별칭
+### API Rate Limiting
+- In-memory token bucket per key
+- Configurable via `RATE_LIMIT_MAX` and `RATE_LIMIT_WINDOW_MS`
 
+### Path Aliases
 - `@/*` → `./src/*` (tsconfig.json)
 
-## 리스크 최소화 규칙 (필수)
+---
 
-- **에스크로/자금 보관 절대 금지**
-- **"보증", "verified", "guaranteed", "safe escrow" 등의 표현 사용 금지**
-- 모든 거래 관련 페이지에 면책조항(`DISCLAIMER_TEXT`) 표시
-- 거래/등록/요청 시 `DisclaimerCheckbox` 동의 필수
-- 플랫폼 역할은 "정보 제공 및 연결"에 한정
+## Environment Variables
 
-## Git 워크플로
+See `.env.example` for all required variables:
+- `DATABASE_URL` — PostgreSQL connection string
+- `JWT_SECRET` — Minimum 32-char secret for JWT signing
+- `OPENAI_API_KEY` — OpenAI API key for article generation
+- `ENCRYPTION_KEY` — Secret for AES-256-GCM credential encryption
+- `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_MS` — API rate limit config
 
-- **기본 브랜치:** `master`
-- AI 어시스턴트 피처 브랜치: `claude/<설명>` 패턴
-- 커밋 메시지: **왜** 변경했는지 한글로 설명
+---
 
-## 개발 환경
+## Deployment
 
-**WSL2 (Ubuntu)** 위에서 개발:
+### Vercel (Frontend)
+1. Connect GitHub repo to Vercel
+2. Set environment variables in Vercel dashboard
+3. Build command: `npx prisma generate && next build`
+4. Framework preset: Next.js
 
-- **Node.js:** nvm으로 관리 (LTS 버전)
-- **Claude Code:** `npm install -g @anthropic-ai/claude-code`
-- **에디터:** VS Code + Remote - WSL (선택)
+### Railway (Database)
+1. Create PostgreSQL instance on Railway
+2. Copy `DATABASE_URL` to Vercel env vars
+3. Run `npx prisma db push` to create tables
 
-## 테스트 / CI/CD
+---
 
-현재 미설정. 향후 추가 필요.
+## Git Workflow
 
-## 리서치 우선 규칙 (필수)
+- **Default branch:** `master`
+- **Feature branches:** `claude/<description>` pattern
+- Commit messages: explain **why** the change was made
 
-**코드를 한 줄이라도 작성하기 전에 반드시 아래 리서치 파이프라인을 완료할 것.**
+---
 
-| 순서 | 소스 | 용도 | 도구 |
-|------|------|------|------|
-| 1 | **Context7** | 공식 문서·API 레퍼런스 조회 | Context7 MCP |
-| 2 | **Web Search** | 최신 릴리스·변경사항·커뮤니티 솔루션 확인 | WebSearch |
-| 3 | **Jina Reader** | 특정 URL 원문 정독이 필요할 때 | Jina MCP |
+## AI Assistant Rules
 
-- 최소 **3개 소스** 교차 검증 후 코드 작성
-- 충돌 시 **공식 문서 > 최신 웹 결과 > 기타** 순으로 우선
-
-## AI 어시스턴트 규칙
-
-- **리서치 우선:** 위 규칙 반드시 준수
-- **읽기 먼저:** 기존 파일 수정 전 반드시 읽기
-- **최소한의 변경:** 요청된 것만 수행
-- **보안:** 취약점/비밀정보 절대 커밋 금지
-- **면책조항:** 거래 관련 기능 추가 시 반드시 면책조항 포함
-- **상수 수정:** 카테고리/상태/설정 변경은 `src/lib/constants.ts`에서
-- **이 파일 업데이트:** 프로젝트에 중요한 결정이 있으면 CLAUDE.md 갱신
+- **Read first:** Always read existing files before modifying
+- **Minimal changes:** Only do what was requested
+- **Security:** Never commit secrets or credentials
+- **Constants:** Modify enums/settings in `src/lib/constants.ts`
+- **Update this file:** Keep CLAUDE.md current with major decisions
