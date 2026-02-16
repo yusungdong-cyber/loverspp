@@ -46,3 +46,19 @@ preview.html
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Supabase
+/supabase/.temp/
+/supabase/.branches/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# Seed / scripts temp
+scripts/*.log

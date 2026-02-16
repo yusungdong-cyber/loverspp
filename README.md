@@ -1,123 +1,148 @@
-# LoversPick — Seoul Travel Concierge
+# VibeExchange — 바이브코딩 거래소
 
-> **No tourist traps. No rip-offs. Just Seoul, done right.**
+> 바이브코딩으로 만들고, 사고, 의뢰하세요.
 
-A production-ready MVP landing website for LoversPick, a real-time 1:1 chat concierge service (Telegram / WhatsApp) that connects Seoul travelers with real locals.
+바이브코딩 프로젝트의 제작 의뢰와 SaaS 거래를 위한 MVP 웹 플랫폼입니다.
 
-## Tech Stack
+## 두 가지 핵심 플로우
 
-| Layer | Tool |
-|-------|------|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| Styling | Tailwind CSS v4 |
-| Language | TypeScript (strict mode) |
-| Deployment | Vercel (zero-config) |
+### Flow A: 홈페이지 제작 요청
+- 바이어가 웹사이트/랜딩 페이지 제작을 요청
+- 크리에이터들이 제안서를 보내고 바이어가 선택
+- 현재 수수료 없음
 
-## Quick Start
+### Flow B: SaaS 거래소
+- 바이브코딩으로 만든 SaaS/프로젝트를 등록 및 거래
+- 구매자와 판매자 간 직접 거래
+- 플랫폼 수수료: 5%
+
+## 기술 스택
+
+| 분류 | 기술 |
+|------|------|
+| 프레임워크 | Next.js 14 (App Router) |
+| 언어 | TypeScript (strict) |
+| 스타일링 | Tailwind CSS + shadcn/ui |
+| 인증/DB | Supabase (Auth + Postgres + Storage) |
+| 결제 | Stripe Connect (선택, 피처플래그) |
+| 배포 | Vercel |
+
+## 빠른 시작
+
+### 1. 의존성 설치
 
 ```bash
-# Install dependencies
 npm install
-
-# Development server (http://localhost:3000)
-npm run dev
-
-# Production build
-npm run build
-
-# Start production server
-npm start
-
-# Lint
-npm run lint
 ```
 
-## Project Structure
+### 2. 환경변수 설정
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.local`을 수정하세요:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### 3. Supabase 설정
+
+1. [supabase.com](https://supabase.com)에서 새 프로젝트 생성
+2. SQL Editor에서 `supabase/migrations/001_initial.sql` 실행
+3. Authentication > Settings에서 이메일 인증 설정
+
+### 4. 개발 서버 실행
+
+```bash
+npm run dev
+```
+
+http://localhost:3000 에서 확인
+
+### 5. (선택) 시드 데이터
+
+```bash
+# .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 필요
+npm run seed
+```
+
+테스트 계정:
+- `buyer@test.com` / `test1234`
+- `seller@test.com` / `test1234`
+- `creator@test.com` / `test1234`
+
+## 명령어
+
+```bash
+npm run dev      # 개발 서버
+npm run build    # 프로덕션 빌드
+npm start        # 프로덕션 서버
+npm run lint     # ESLint
+npm run seed     # 시드 데이터
+```
+
+## 프로젝트 구조
 
 ```
 src/
 ├── app/
-│   ├── layout.tsx          # Root layout — SEO, OG, Twitter cards
-│   ├── page.tsx            # Landing page (all sections)
-│   ├── globals.css         # Tailwind v4 theme + custom utilities
-│   ├── api/lead/route.ts   # Lead capture API (logs + local JSON)
-│   ├── terms/page.tsx      # Terms of Service
-│   └── privacy/page.tsx    # Privacy Policy
+│   ├── page.tsx                    # 홈 (두 가지 플로우)
+│   ├── (auth)/login/page.tsx       # 로그인
+│   ├── (auth)/signup/page.tsx      # 회원가입
+│   ├── requests/                   # Flow A: 제작 요청
+│   │   ├── page.tsx                # 요청 게시판
+│   │   ├── new/page.tsx            # 새 요청 작성
+│   │   └── [id]/
+│   │       ├── page.tsx            # 요청 상세
+│   │       └── propose/page.tsx    # 제안서 작성
+│   ├── market/                     # Flow B: SaaS 거래소
+│   │   ├── page.tsx                # 리스팅 목록
+│   │   └── [id]/page.tsx           # 리스팅 상세
+│   ├── sell/new/page.tsx           # 판매 등록
+│   ├── inbox/                      # 메시징
+│   ├── deals/[dealId]/page.tsx     # 거래 상세
+│   ├── dashboard/                  # 대시보드
+│   ├── terms/page.tsx              # 이용약관
+│   ├── disclaimer/page.tsx         # 면책조항
+│   └── safety-checklist/page.tsx   # 안전 거래 체크리스트
 ├── components/
-│   ├── Header.tsx          # Sticky header + mobile menu + lang toggle
-│   ├── Hero.tsx            # Hero with CTAs
-│   ├── HowItWorks.tsx      # 3-step process
-│   ├── WhatWeHelp.tsx      # Services grid
-│   ├── WhyNotAI.tsx        # AI vs Local comparison table
-│   ├── Pricing.tsx         # 3 plan cards + premium add-on
-│   ├── Benefits.tsx        # Exclusive benefits (NOT discounts)
-│   ├── Testimonials.tsx    # 6 testimonial cards + "As seen on"
-│   ├── FAQ.tsx             # Accordion FAQ
-│   ├── LeadCapture.tsx     # Email + chat handle form (GDPR consent)
-│   └── Footer.tsx          # Footer with links
-└── lib/
-    ├── config.ts           # Single source of truth: pricing, benefits, FAQs, testimonials
-    ├── i18n.ts             # EN/JA string map + t() helper
-    ├── analytics.ts        # Event tracking placeholders (GTM-compatible)
-    └── LangContext.tsx      # React context for language toggle
+│   ├── ui/                         # shadcn/ui 컴포넌트
+│   ├── layout/                     # Header, Footer
+│   └── shared/                     # DisclaimerCheckbox
+├── lib/
+│   ├── supabase/                   # Supabase 클라이언트
+│   ├── types/database.ts           # TypeScript 타입
+│   ├── constants.ts                # 상수 및 설정
+│   └── utils.ts                    # 유틸리티 함수
+└── middleware.ts                   # Supabase 세션 갱신
+
+supabase/
+└── migrations/
+    └── 001_initial.sql             # DB 스키마 + RLS
 ```
 
-## Editing Content
+## 데이터베이스 스키마
 
-All editable content lives in **one file**: `src/lib/config.ts`
+- **profiles** — 사용자 프로필 (회원가입 시 자동 생성)
+- **requests** — 제작 요청 (Flow A)
+- **proposals** — 요청에 대한 제안서
+- **listings** — SaaS 리스팅 (Flow B)
+- **listing_images** — 리스팅 이미지
+- **threads** — 메시지 스레드
+- **messages** — 메시지
+- **deals** — 거래 기록
+- **reports** — 신고
 
-| What to change | Where |
-|----------------|-------|
-| Pricing ($39 / $59 / $79) | `PLANS` array |
-| Premium add-on ($29) | `PREMIUM_ADDON` |
-| CTA links (Telegram, Buy) | `CTA` object |
-| Benefits (free extras) | `BENEFITS` array |
-| Testimonials | `TESTIMONIALS` array |
-| FAQ answers | `FAQ_ITEMS` array |
+모든 테이블에 Row Level Security(RLS)가 적용되어 있습니다.
 
-For UI strings (headings, button text) in both languages: `src/lib/i18n.ts`
+## 리스크 최소화 원칙
 
-## Customization Checklist
-
-Before going live, update these:
-
-- [ ] **Telegram bot link** — `CTA.telegram` in `src/lib/config.ts`
-- [ ] **Buy pass link** — `CTA.buyPass` in `src/lib/config.ts`
-- [ ] **WhatsApp number** — `CTA.whatsapp` in `src/lib/config.ts`
-- [ ] **Pricing** — `PLANS` and `PREMIUM_ADDON` in `src/lib/config.ts`
-- [ ] **OG image** — Replace `/public/og-image.png` (1200x630)
-- [ ] **Favicon** — Replace `/public/favicon.ico`
-- [ ] **Domain** — Update `SITE.url` in `src/lib/config.ts`
-- [ ] **Email addresses** — Search for `loverspick.com` and update
-- [ ] **Analytics** — Add GTM container ID or replace `analytics.ts` with real SDK
-- [ ] **Lead storage** — Replace local JSON with CRM (see TODO in `api/lead/route.ts`)
-- [ ] **Legal pages** — Review and update `/terms` and `/privacy` with real legal copy
-- [ ] **Japanese translations** — Complete all `Ja` strings in `config.ts` and `i18n.ts`
-- [ ] **Testimonials** — Replace placeholder names with real reviews
-- [ ] **"As seen on" logos** — Replace text placeholders with actual media logos
-
-## Deploy to Vercel
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-
-# Production deploy
-vercel --prod
-```
-
-Or push to GitHub and connect the repo at [vercel.com/new](https://vercel.com/new).
-
-## Key Design Decisions
-
-- **No price-discount language** — Uses "Exclusive Benefits / Free Extras / Upgrades" per brand rules
-- **Mobile-first** — All layouts designed for phone screens first
-- **System font stack** — Zero external font requests for maximum speed
-- **Minimal deps** — Only Next.js + React + Tailwind. No UI libraries.
-- **EN/JA toggle** — Language context provider makes it easy to add more languages
-- **UTM parameters** — All CTA links include UTM tags for attribution
-- **GDPR-friendly** — Lead form includes explicit marketing opt-in checkbox
-- **Accessible** — Semantic HTML, ARIA labels, sufficient color contrast
+- 에스크로, 자금 보관 없음
+- "보증", "안전 거래" 등의 표현 사용하지 않음
+- 모든 거래 관련 페이지에 면책조항 표시
+- 거래 시작 전 면책조항 동의 체크박스 필수
+- 안전 거래 체크리스트 제공 (법적 조언 아님)
+- 플랫폼 수수료는 정보 중개 서비스의 대가

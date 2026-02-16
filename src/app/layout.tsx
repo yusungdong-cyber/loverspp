@@ -1,48 +1,25 @@
 import type { Metadata } from "next";
-import { LangProvider } from "@/lib/LangContext";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://loverspick.com"),
-  title: "LoversPick — Seoul Travel Concierge | No Tourist Traps",
-  description:
-    "Real locals help you navigate Seoul in real time via chat. Price checks, restaurant orders, directions, reservations, and emergency support — all from someone who actually lives here.",
-  keywords: [
-    "Seoul travel",
-    "Seoul concierge",
-    "tourist trap prevention",
-    "Korea travel help",
-    "Seoul local guide",
-    "real-time chat concierge",
-  ],
-  openGraph: {
-    title: "LoversPick — No Tourist Traps. No Rip-offs. Just Seoul, Done Right.",
-    description:
-      "Chat with real Seoul locals in real time. Price checks, restaurant help, directions, reservations & emergency support.",
-    url: "https://loverspick.com",
-    siteName: "LoversPick",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "LoversPick Seoul Concierge" }],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "LoversPick — Seoul Travel Concierge",
-    description: "Real locals. Real-time chat. No tourist traps in Seoul.",
-    images: ["/og-image.png"],
-  },
-  robots: { index: true, follow: true },
+  title: "VibeExchange — 바이브코딩 거래소",
+  description: "바이브코딩으로 만들고, 사고, 의뢰하세요. 홈페이지 제작 요청과 SaaS 거래를 한 곳에서.",
+  keywords: ["바이브코딩", "vibe coding", "SaaS 거래소", "홈페이지 제작", "웹사이트 의뢰"],
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <body className="antialiased">
-        <LangProvider>{children}</LangProvider>
+    <html lang="ko">
+      <body className="min-h-screen flex flex-col antialiased">
+        <Header />
+        <main className="flex-1">{children}</main>
+        <Footer />
       </body>
     </html>
   );
