@@ -39,6 +39,10 @@ yarn-error.log*
 # MVP lead data
 /data/
 
+# Temporary preview
+preview.html
+/out/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
