@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -72,40 +71,32 @@ model TrendTopic {
   @@map("trend_topics")
 }
 
-enum ArticleStatus {
-  DRAFT
-  GENERATING
-  READY
-  PUBLISHING
-  PUBLISHED
-  FAILED
-}
-
+// ArticleStatus values: DRAFT, GENERATING, READY, PUBLISHING, PUBLISHED, FAILED
 model Article {
-  id                String        @id @default(cuid())
-  userId            String        @map("user_id")
-  wpSiteId          String?       @map("wp_site_id")
-  trendTopicId      String?       @map("trend_topic_id")
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  wpSiteId          String?  @map("wp_site_id")
+  trendTopicId      String?  @map("trend_topic_id")
   title             String
   slug              String?
-  metaDescription   String?       @map("meta_description")
-  content           String        @db.Text
-  htmlContent       String?       @map("html_content") @db.Text
-  featuredImageUrl  String?       @map("featured_image_url")
-  featuredImageAlt  String?       @map("featured_image_alt")
-  inArticleImages   Json?         @map("in_article_images") // [{url, alt, prompt}]
-  schemaMarkup      Json?         @map("schema_markup")     // JSON-LD
-  seoScore          Json?         @map("seo_score")         // {keyword, readability, heading, overall}
-  primaryKeyword    String?       @map("primary_keyword")
-  tags              String[]      @default([])
-  categories        String[]      @default([])
-  status            ArticleStatus @default(DRAFT)
-  wordCount         Int?          @map("word_count")
-  wpPostId          Int?          @map("wp_post_id")
-  publishedAt       DateTime?     @map("published_at")
-  scheduledAt       DateTime?     @map("scheduled_at")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
+  metaDescription   String?  @map("meta_description")
+  content           String
+  htmlContent       String?  @map("html_content")
+  featuredImageUrl  String?  @map("featured_image_url")
+  featuredImageAlt  String?  @map("featured_image_alt")
+  inArticleImages   String?  @map("in_article_images") // JSON string: [{url, alt, prompt}]
+  schemaMarkup      String?  @map("schema_markup")     // JSON-LD string
+  seoScore          String?  @map("seo_score")         // JSON string: {keyword, readability, heading, overall}
+  primaryKeyword    String?  @map("primary_keyword")
+  tags              String   @default("[]")             // JSON string array
+  categories        String   @default("[]")             // JSON string array
+  status            String   @default("DRAFT")
+  wordCount         Int?     @map("word_count")
+  wpPostId          Int?     @map("wp_post_id")
+  publishedAt       DateTime? @map("published_at")
+  scheduledAt       DateTime? @map("scheduled_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   wpSite     WpSite?     @relation(fields: [wpSiteId], references: [id], onDelete: SetNull)

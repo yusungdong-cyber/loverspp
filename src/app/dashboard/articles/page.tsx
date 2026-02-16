@@ -10,7 +10,7 @@ import { ARTICLE_STATUSES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { SeoScoreBadge } from "@/components/shared/seo-score-badge";
 import { FileText, Trash2, ExternalLink } from "lucide-react";
-import type { ArticleStatus } from "@prisma/client";
+type ArticleStatus = "DRAFT" | "GENERATING" | "READY" | "PUBLISHING" | "PUBLISHED" | "FAILED";
 
 interface Article {
   id: string;

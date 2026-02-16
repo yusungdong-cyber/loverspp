@@ -3,7 +3,19 @@ import { generateArticle } from "./openai";
 import { calculateSeoScore } from "./seo-scorer";
 import { publishToWordPress } from "./wordpress";
 import { slugify } from "@/lib/utils";
-import type { ArticleStatus } from "@prisma/client";
+type ArticleStatus = "DRAFT" | "GENERATING" | "READY" | "PUBLISHING" | "PUBLISHED" | "FAILED";
+
+function parseJsonFields<T extends Record<string, unknown>>(article: T | null): T | null {
+  if (!article) return article;
+  return {
+    ...article,
+    tags: typeof article.tags === "string" ? JSON.parse(article.tags) : article.tags ?? [],
+    categories: typeof article.categories === "string" ? JSON.parse(article.categories) : article.categories ?? [],
+    seoScore: typeof article.seoScore === "string" ? JSON.parse(article.seoScore) : article.seoScore,
+    schemaMarkup: typeof article.schemaMarkup === "string" ? JSON.parse(article.schemaMarkup) : article.schemaMarkup,
+    inArticleImages: typeof article.inArticleImages === "string" ? JSON.parse(article.inArticleImages) : article.inArticleImages,
+  };
+}
 
 export async function createArticleFromTopic(
   userId: string,
@@ -50,17 +62,17 @@ export async function createArticleFromTopic(
         htmlContent: generated.htmlContent,
         featuredImageUrl: null,
         featuredImageAlt: generated.featuredImageAlt,
-        inArticleImages: JSON.parse(JSON.stringify(generated.inArticleImages)),
-        schemaMarkup: JSON.parse(JSON.stringify(generated.schemaMarkup)),
-        seoScore: JSON.parse(JSON.stringify(seoScore)),
-        tags: generated.tags,
-        categories: generated.categories,
+        inArticleImages: JSON.stringify(generated.inArticleImages),
+        schemaMarkup: JSON.stringify(generated.schemaMarkup),
+        seoScore: JSON.stringify(seoScore),
+        tags: JSON.stringify(generated.tags),
+        categories: JSON.stringify(generated.categories),
         wordCount: generated.wordCount,
         status: "READY",
       },
     });
 
-    return updated;
+    return parseJsonFields(updated);
   } catch (error) {
     await db.article.update({
       where: { id: article.id },
@@ -95,16 +107,20 @@ export async function publishArticle(
 
   try {
     // Add schema markup to HTML
-    const schemaScript = article.schemaMarkup
-      ? `\n<script type="application/ld+json">${JSON.stringify(article.schemaMarkup)}</script>`
+    const schemaMarkup = article.schemaMarkup ? JSON.parse(article.schemaMarkup) : null;
+    const schemaScript = schemaMarkup
+      ? `\n<script type="application/ld+json">${JSON.stringify(schemaMarkup)}</script>`
       : "";
+
+    const tags: string[] = article.tags ? JSON.parse(article.tags) : [];
+    const categories: string[] = article.categories ? JSON.parse(article.categories) : [];
 
     const result = await publishToWordPress(article.wpSiteId, userId, {
       title: article.title,
       htmlContent: (article.htmlContent || article.content) + schemaScript,
       metaDescription: article.metaDescription || undefined,
-      tags: article.tags,
-      categories: article.categories,
+      tags,
+      categories,
       status: options.status || "draft",
       scheduledAt: options.scheduledAt,
       featuredImageUrl: article.featuredImageUrl || undefined,
@@ -153,17 +169,18 @@ export async function getUserArticles(
     db.article.count({ where }),
   ]);
 
-  return { articles, total };
+  return { articles: articles.map(parseJsonFields), total };
 }
 
 export async function getArticleById(articleId: string, userId: string) {
-  return db.article.findFirst({
+  const article = await db.article.findFirst({
     where: { id: articleId, userId },
     include: {
       wpSite: { select: { id: true, siteUrl: true } },
       trendTopic: true,
     },
   });
+  return parseJsonFields(article);
 }
 
 export async function deleteArticle(articleId: string, userId: string) {
@@ -179,7 +196,7 @@ export async function getDashboardStats(userId: string) {
       db.article.count({ where: { userId, status: "READY" } }),
     ]);
 
-  const recentArticles = await db.article.findMany({
+  const recentArticlesRaw = await db.article.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
     take: 5,
@@ -192,6 +209,7 @@ export async function getDashboardStats(userId: string) {
       wordCount: true,
     },
   });
+  const recentArticles = recentArticlesRaw.map(parseJsonFields);
 
   const wpSiteCount = await db.wpSite.count({ where: { userId } });
 
