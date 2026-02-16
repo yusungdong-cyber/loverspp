@@ -21,6 +21,29 @@ loverspp/
 - Write clear, descriptive commit messages that explain *why* a change was made
 - Keep commits focused — one logical change per commit
 
+## Development Environment
+
+This project is developed inside **WSL2 (Ubuntu)** on Windows.
+
+- **Project path:** `~/projects/loverspp` (WSL2 native filesystem)
+- **Node.js:** Managed via nvm (LTS version)
+- **Claude Code:** Installed globally via `npm install -g @anthropic-ai/claude-code`
+- **Editor:** VS Code with Remote - WSL extension (optional)
+
+### Why WSL2?
+
+- Native Linux filesystem provides significantly better I/O performance than `/mnt/c/`
+- Full Linux toolchain (git, node, build-essential) available natively
+- Claude Code runs as a first-class Linux CLI tool
+
+### Quick Start
+
+```bash
+wsl                            # Open Ubuntu from Windows
+cd ~/projects/loverspp         # Navigate to project
+claude                         # Launch Claude Code
+```
+
 ## Development Guidelines
 
 As the project grows, update this file with:
