@@ -46,6 +46,7 @@ export default function ListingDetailPage() {
     if (!agreed) return alert("면책조항에 동의해주세요.");
 
     const supabase = createClient();
+    if (!supabase) return alert("서비스 준비 중입니다.");
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -60,6 +61,7 @@ export default function ListingDetailPage() {
 
   const handleMessage = async () => {
     const supabase = createClient();
+    if (!supabase) return alert("서비스 준비 중입니다.");
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

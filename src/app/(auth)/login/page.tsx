@@ -22,6 +22,7 @@ export default function LoginPage() {
     setError("");
 
     const supabase = createClient();
+    if (!supabase) { setError("서비스 준비 중입니다."); setLoading(false); return; }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
