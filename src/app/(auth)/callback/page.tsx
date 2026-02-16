@@ -9,6 +9,7 @@ export default function CallbackPage() {
 
   useEffect(() => {
     const supabase = createClient();
+    if (!supabase) return;
     supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN") {
         router.push("/");

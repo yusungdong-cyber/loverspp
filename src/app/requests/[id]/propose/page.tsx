@@ -35,6 +35,7 @@ export default function ProposePage() {
     setLoading(true);
 
     const supabase = createClient();
+    if (!supabase) { alert("서비스 준비 중입니다."); setLoading(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
